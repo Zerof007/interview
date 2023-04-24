@@ -908,6 +908,7 @@ int main()
     templated_fn<std::vector<int>>({1, 2, 3});           // 也 OK
 }
 ```
+在 C++ 中，如果要调用一个模板函数或者模板类，需要在尖括号 <> 内指定模板参数的类型或数值。这也被称为模板实例化（Template Instantiation）。
 
 ### 面向对象
 
@@ -1182,8 +1183,24 @@ new (place_address) type [size] { braced initializer list }
 
 原因：在堆上生成对象，使用 new 关键词操作，其过程分为两阶段：第一阶段，使用 new 在堆上寻找可用内存，分配给对象；第二阶段，调用构造函数生成对象。将 new 操作设置为私有，那么第一阶段就无法完成，就不能够在堆上生成对象。
 
-### 智能指针
+在 C++ 中，可以选择在栈上或者堆上生成对象，这两种方式有以下不同点：
 
+存储位置
+在栈上生成的对象存储在函数调用栈内存中，分配和释放内存由编译器自动进行。而在堆上生成的对象存储在常规的堆内存中，需要手动分配和释放内存。
+
+生命周期
+在栈上生成的对象生命周期与其所在作用域相同，一旦作用域结束，该对象就会被自动销毁。而在堆上生成的对象则可以通过 delete 运算符手动销毁，也可以在程序退出时被操作系统回收。
+
+访问控制
+在栈上生成对象不能被其他函数或对象所引用，只能在当前作用域内使用。而在堆上生成对象则可以将其指针传递给其他函数或对象，从而实现对象间的交互。
+
+存储空间大小
+由于栈的空间是有限的，通常比堆要小。因此，在栈上生成的对象大小应该受到控制，以免出现栈溢出等运行错误。
+
+综上所述
+
+### 智能指针
+智能指针是一种 C++ 编程语言中的引用类别，它们适用于动态内存分配，可以管理内存的生命周期并避免内存泄漏和悬挂的指针。智能指针在 C++11 标准中首次引入，通过 RAII (Resource Acquisition Is Initialization) 技术实现自动化内存管理，即在构造函数中申请内存，而在析构函数中释放内存，从而有效地避免了内存泄漏问题。同时智能指针还支持自定义删除器，让用户可以灵活地控制内存的回收方式。
 #### C++ 标准库（STL）中
 
 头文件：`#include <memory>`
@@ -1209,16 +1226,29 @@ std::auto_ptr<std::string> ps (new std::string(str))；
 多个智能指针可以共享同一个对象，对象的最末一个拥有着有责任销毁对象，并清理与该对象相关的所有资源。
 
 * 支持定制型删除器（custom deleter），可防范 Cross-DLL 问题（对象在动态链接库（DLL）中被 new 创建，却在另一个 DLL 内被 delete 销毁）、自动解除互斥锁
+```
+std::shared_ptr<int> ptr1(new int(42));  // 创建一个 int 类型的 shared_ptr
+std::shared_ptr<int> ptr2 = ptr1;  // 多个指针共享同一块内存
+```
 
 ##### weak_ptr
 
 weak_ptr 允许你共享但不拥有某对象，一旦最末一个拥有该对象的智能指针失去了所有权，任何 weak_ptr 都会自动成空（empty）。因此，在 default 和 copy 构造函数之外，weak_ptr 只提供 “接受一个 shared_ptr” 的构造函数。
 
 * 可打破环状引用（cycles of references，两个其实已经没有被使用的对象彼此互指，使之看似还在 “被使用” 的状态）的问题
+```
+std::shared_ptr<int> ptr1(new int(42));  // 创建一个 int 类型的 shared_ptr
+std::weak_ptr<int> ptr2 = ptr1;   // 创建一个 int 类型的 weak_ptr
+```
 
 ##### unique_ptr
 
-unique_ptr 是 C++11 才开始提供的类型，是一种在异常时可以帮助避免资源泄漏的智能指针。采用独占式拥有，意味着可以确保一个对象和其相应的资源同一时间只被一个 pointer 拥有。一旦拥有着被销毁或编程 empty，或开始拥有另一个对象，先前拥有的那个对象就会被销毁，其任何相应资源亦会被释放。
+unique_ptr 是 C++11 才开始提供的类型，是一种在异常时可以帮助避免资源泄漏的智能指针。采用独占式拥有，意味着可以确保一个对象和其相应的资源同一时间只被一个 pointer 拥有。一旦拥有着被销毁或编程 empty，或开始拥有另一个对象，先前拥有的那个对象就会被销毁，其任何相应资源亦会被释放。当该对象被析构或者 reset() 时会自动释放内存。
+```
+std::unique_ptr<int> ptr1(new int);  // 创建一个 int 类型的 unique_ptr
+*ptr1 = 10;  // 对指针所指向的内存赋值
+std::unique_ptr<std::string> ptr2(new std::string("hello"));  // 创建一个 string 类型的 unique_ptr
+```
 
 * unique_ptr 用于取代 auto_ptr
 
@@ -1243,7 +1273,10 @@ unique_ptr 是 C++11 才开始提供的类型，是一种在异常时可以帮�
 * 可以在整个类层次结构中移动指针，子类转化为父类安全（向上转换），父类转化为子类不安全（因为子类可能有不在父类的字段或方法）
 
 > 向上转换是一种隐式转换。
-
+```
+int i = 10;
+float f = static_cast<float>(i);
+```
 #### dynamic_cast
 
 * 用于多态类型的转换
@@ -1251,11 +1284,29 @@ unique_ptr 是 C++11 才开始提供的类型，是一种在异常时可以帮�
 * 只适用于指针或引用
 * 对不明确的指针的转换将失败（返回 nullptr），但不引发异常
 * 可以在整个类层次结构中移动指针，包括向上转换、向下转换
+```
+class A {
+public:
+    virtual ~A() {}
+};
 
+class B : public A {};
+
+A* a_ptr = new B;
+B* b_ptr = dynamic_cast<B*>(a_ptr);
+```
 #### const_cast 
 
 * 用于删除 const、volatile 和 __unaligned 特性（如将 const int 类型转换为 int 类型 ）
+```
+void print(char* str) {
+    cout << str << endl;
+}
 
+const char* c_str = "Hello, world!";
+char* str = const_cast<char*>(c_str);
+print(str);
+```
 #### reinterpret_cast
 
 * 用于位的简单重新解释
@@ -1265,6 +1316,12 @@ unique_ptr 是 C++11 才开始提供的类型，是一种在异常时可以帮�
 * reinterpret_cast 运算符不能丢掉 const、volatile 或 __unaligned 特性。 
 * reinterpret_cast 的一个实际用途是在哈希函数中，即，通过让两个不同的值几乎不以相同的索引结尾的方式将值映射到索引。
 
+```
+void* ptr = malloc(sizeof(int));
+int* i_ptr = reinterpret_cast<int*>(ptr);
+*i_ptr = 10;
+free(ptr);
+```
 #### bad_cast
 
 * 由于强制转换为引用类型失败，dynamic_cast 运算符引发 bad_cast 异常。
@@ -1281,7 +1338,9 @@ catch (bad_cast b) {
 ```
 
 ### 运行时类型信息 (RTTI) 
+在 C++ 中，运行时类型信息是一种特定的机制，它可以让程序能够在运行时确定对象或引用的类型，并且避免出现类型转换错误等问题。在获得了类型信息后，程序可以根据需要进行判断和操作，这对于多态和泛型编程尤其有用。
 
+要在 C++ 程序中开启 RTTI，通常需要在编译器设置中显式启用该功能。不同编译器的设置方法可能有所不同，但大部分编译器都提供了相应的选项。例如，在 Visual Studio 中，可以通过打开项目属性页中的“C/C++”选项卡，然后将“启用运行时类型信息”属性设置为“是”来开启 RTTI。
 #### dynamic_cast
 
 * 用于多态类型的转换
@@ -1361,6 +1420,12 @@ int main(){
 	return 0;
 }
 ```
+type_info 后面跟有 & ，是因为 typeid 运算符返回的结果是一个引用类型 const type_info&。这样做的好处是，可以避免拷贝构造和拷贝赋值操作，从而提高效率。
+
+在 C++ 中，引用类型是一种特殊的类型，它可以看做是某一对象的别名，与该对象共享同一块内存空间。使用引用类型可以使程序更加简洁和高效。在本例中，如果我们将 typeid 运算符返回的 type_info 对象作为值类型返回，那么会触发拷贝构造，降低程序效率。
+
+另外，const 关键字表示该引用类型是一个常量引用，不能通过该引用修改所引用对象的值，从而保证了类型信息的不可变性。
+
 
 <a id="effective"></a>
 
